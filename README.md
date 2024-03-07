@@ -13,9 +13,9 @@ Navigate to the directory in which you would like to download this tool and use 
 ```
 git clone https://github.com/WillardFord/wf-admixture.git
 cd wf-admixture
-python setup.py install [--user]
+python setup.py install
 ```
-Note: To install locally (i.e. without root access) use the --user tag.
+Note: To install locally (i.e. without root access) use the `--user` tag when calling `setup.py`.
 
 If the install was successful, typing `wf-admixture --help` should show a useful message.
 

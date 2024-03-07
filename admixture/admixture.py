@@ -11,6 +11,9 @@ import os
 import sys
 import time
 
+import scipy as sp
+import numpy as np
+
 def main():
     parser = argparse.ArgumentParser(
         prog="",
@@ -18,9 +21,9 @@ def main():
     )
 
     # Inputs
-    parser.add_argument("bed",\
-                        help="A bed file.",
-                        metavar="BED", type = str)
+    parser.add_argument("ped",\
+                        help="A ped file as described by .",
+                        metavar="PED", type = str)
     
     parser.add_argument("k", help="An integer representing the number of populations "\
                         "to divide your dataset into.",

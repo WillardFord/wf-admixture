@@ -21,9 +21,9 @@ def main():
     )
 
     # Inputs
-    parser.add_argument("ped",\
-                        help="A ped file as described by .",
-                        metavar="PED", type = str)
+    parser.add_argument("bed",\
+                        help="A .bed file as described by Plink.",
+                        metavar="BED", type = str)
     
     parser.add_argument("k", help="An integer representing the number of populations "\
                         "to divide your dataset into.",

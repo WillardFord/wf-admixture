@@ -1,4 +1,4 @@
-# wf-align (CSE185 Project Demo)
+# wf-admixture
 
 This is a demonstration project for CSE284. It implements a smaller, simpler version of the admixture algorithm. See [ADMIXTURE](https://dalexander.github.io/admixture/index.html) page for more details. Refer to the final-project-files directory for presentation materials and summarization document.
 

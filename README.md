@@ -39,7 +39,7 @@ wf-admixture your-favorite.bed k [-o PREFIX]
 
 To run `wf-admixture` on a small test example (using files in this repo):
 ```
-wf-admixture toy_files/toy_bed 3
+wf-admixture toy_files/toy.bed 3
 ```
 
 This should produce the output below:
@@ -54,7 +54,7 @@ To compare to output of `ADMIXTURE`, run:
 
 ## wf-admixture options
 
-There are 2 required inputs to `wf-admixture`, a reference fasta file and a fastq file containing reads. Users may additionally specify the options below:
+There are 2 required inputs to `wf-admixture`, a reference ___TODO
 
 * `-o PREFIX`, `--output PREFIX`: Write ancestry fractions to `PREFIX.Q` and allele frequencies to `PREFIX.P`. By default outputs are written to stdout.
 

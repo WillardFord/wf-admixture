@@ -17,10 +17,10 @@ def main():
     num_populations = int(populations)
 
     # toy.fam
-    # We only need unique ids for each user, nothing else we use
+    # We only need unique ids for each user, nothing else we use in v0.0
     f = open(fam_file, 'w')
     for i in range(num_samples):
-        f.write(f"{i}\t{i}0\t0\t0\t0\n")
+        f.write(f"{i}\t{i}\t0\t0\t0\t0\n")
     f.close()
 
     # toy.bim
@@ -36,18 +36,22 @@ def main():
     # TODO add admixture
 
     # toy.bed
-    prefix = b"\x6c\x1b\x01"
-    num_blocks = math.ceil(num_samples/4)
+    header = b"\x6c\x1b\x01"
+    block_size = math.ceil(num_samples/4)
     f = open(bed_file, 'wb')
-    f.write(prefix)
+    f.write(header)
     for i in range(num_variants):
-        # Write two bits per iteration
-        for j in range(num_blocks * 4):
-            sample_id = j//2 + 1
-            if sample_id > num_samples:
-                f.write(b"\x00\x00")
-                continue
-            f.write(b"\x01\x01")
+        # Write two bits per for each sample
+        buffer = ""
+        for j in range(block_size*4):
+            if j < num_samples:
+                buffer += '10'
+            else: 
+                buffer += '00'
+            if len(buffer) == 8:
+                s=int(buffer, 2).to_bytes()
+                f.write(s)
+                buffer = ""
     f.close()
 
 if __name__ == "__main__":

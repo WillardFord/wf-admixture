@@ -10,9 +10,11 @@ from . import utils as utils
 import os
 import sys
 import time
+from collections import namedtuple
 
 import scipy as sp
 import numpy as np
+
 
 def main():
     parser = argparse.ArgumentParser(
@@ -72,7 +74,82 @@ def main():
     print("Congratulations! You loaded v0.0.0 of wf-admixture")
 
     # Read in input files
-    # How do I store the input information
+    """
+    Scratch Notes, please disregard. 
+    Relevant documentation is in function descriptions and code is more easily 
+        understood from reading it directly.
+    bim file:
+        Necessary Information:
+            1. J: Number of snps
+        Potentially Useful Information:
+            1. SNP identifying information for output 
+                (if we filter SNPs we'll need this)
+                a. Chromosome code
+                b. variant identifier
+            2. SNP filtering information
+                a. position in morgans or centimorgans
+                b. base-pair coordinates
+        Present Not Useful Information:
+            1. Allele variant information
+    fam file:
+        Necessary Information:
+            1. I: Number of individuals
+        Potentially Useful Information:
+            (To filter out individuals we'll need this information)
+            1. Family information to filter out individuals from the same family
+                a. Family ID
+                b. within Family ID of father and mother
+            2. Unique ID's to identify individuals if we filter some out
+                a. Within-family ID with family ID
+        Present Not Useful Information:
+            1. Sex labels -- given equal proportions of each sex from each population,
+                    sex information shouldn't add anything to our model
+            2. Phenotype values -- not used here
+    bed file:
+        Necessary Information:
+            1. Genotype information for every snp of each individual
+    """
+
+    snps: list[utils.SNP] = utils.readBIM(bim_file)
+    samples: list[utils.SAMPLE] = utils.readFAM(fam_file)
+
+    I = len(samples)
+    J = len(snps)
+    genotypes :np.ndarray= utils.readBED(bed_file, I, J)
+
+    """
+    Scratch Notes, please disregard. 
+    Relevant documentation is in function descriptions and code is more easily 
+        understood from reading it directly.
+    admixture_proportions: Q[i,k] = population k's contribution to individual i
+        Constraints:
+            1. Each row should sum to 1 
+                i.e. the contribution of all populations to an individual i sum to 1
+            2. For all x in Q, x >= 0
+        Init Possibilities: TODO (Start with 1, try others later)
+            1. Uniform across rows
+            2. Randomly assign value of 1 to a single population k for each individual.
+            3. Randomly assign values summing to 1 to each population k for each individual.
+    """
+    # Init Option 1
+    admixture_proportions :np.ndarray = np.ones((I, K)) * (1/K)
+    allele_frequencies :np.ndarray = utils.initializeAlleleFrequencies(I, J, K, 
+                                        genotypes, admixture_proportions)
+
+    # Block Relaxation Algorithm
+    iterations = 0
+    while True:
+        if iterations % 2 == 0: admixture_proportions = updateQ(I, J, K, genotypes, 
+                                                                admixture_proportions, allele_frequencies)
+        else: allele_frequencies = updateF(I, J, K, genotypes, 
+                                           admixture_proportions, allele_frequencies)
+        num_iterations += 1
+        if endCondition(admixture_proportions, allele_frequencies):
+            break
+
+    print("Number of Iterations", num_iterations)
+
+
 
     # Set up output file
     if args.output == None:
@@ -83,6 +160,7 @@ def main():
     if metrics:
         pass
 
+    # Write outputs
 
 if __name__ == '__main__':
     main()

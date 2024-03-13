@@ -137,17 +137,41 @@ def main():
                                         genotypes, admixture_proportions)
 
     # Block Relaxation Algorithm
+    epsilon = 10e-4 # Should probably be as low as 10e-4
+    print(epsilon)
     iterations = 0
+    oldll = utils.logLiklihood(I, J, K, genotypes, admixture_proportions, 
+                                allele_frequencies)
+    print("Admixture Proportions:\t", admixture_proportions)
+    print("Allele Frequencies:\t", allele_frequencies)
     while True:
-        if iterations % 2 == 0: admixture_proportions = updateQ(I, J, K, genotypes, 
+        admixture_proportions, allele_frequencies = utils.frappeEM(I, J, K, 
+                                genotypes, admixture_proportions, 
+                                allele_frequencies)
+        print("Admixture Proportions:\t", admixture_proportions)
+        print("Allele Frequencies:\t", allele_frequencies)
+        iterations += 1
+        print(f"Iterations: {iterations}")
+        ll = utils.logLiklihood(I, J, K, genotypes, admixture_proportions, 
+                                allele_frequencies)
+        print("ll: ", ll)
+        print("oldll: ", oldll)
+        print(ll - oldll)
+        if oldll - ll < epsilon: break
+        oldll = ll
+        """
+        if iterations % 2 == 0: admixture_proportions = utils.updateQ(I, J, K, genotypes, 
                                                                 admixture_proportions, allele_frequencies)
-        else: allele_frequencies = updateF(I, J, K, genotypes, 
+        else: allele_frequencies = utils.updateF(I, J, K, genotypes, 
                                            admixture_proportions, allele_frequencies)
         num_iterations += 1
         if endCondition(admixture_proportions, allele_frequencies):
             break
+        """
 
-    print("Number of Iterations", num_iterations)
+    print(ll - oldll)
+    print(oldll -ll)
+    print("Number of Iterations", iterations)
 
 
 

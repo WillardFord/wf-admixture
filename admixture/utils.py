@@ -22,7 +22,7 @@ class bcolors:
     BOLD = '\033[1m'
     UNDERLINE = '\033[4m'
 
-def ERROR(msg:str, E=None) -> None:
+def ERROR(msg:str, E = None) -> None:
     """
     Print an error message and die
 
@@ -110,7 +110,9 @@ def readBED(bed_file, num_samples: int, num_variants:int) -> np.ndarray:
                 for _ in range(buffer_size): # Can we read in an entire buffer_size at once?
                     buffer = f.read(1)
                     # Convert a single byte into a binary string
-                    snp_genotypes += "{0:b}".format(int.from_bytes(buffer))
+                    val = "{0:b}".format(int.from_bytes(buffer))
+                    val = '0'*(8-len(val)) + val
+                    snp_genotypes += val
                 for i in range(num_samples):
                     first_allele = int(snp_genotypes[2*i])
                     second_allele = int(snp_genotypes[2*i+1])
@@ -123,7 +125,6 @@ def readBED(bed_file, num_samples: int, num_variants:int) -> np.ndarray:
         message = "Failed to read in bed file. Are you sure it's in the correct format?"
         ERROR(message, E)
     return genotypes
-
 
 def initializeAlleleFrequencies(num_samples:int, num_snps:int, num_populations: int,
                                 genotypes:np.ndarray, 
@@ -152,6 +153,54 @@ def initializeAlleleFrequencies(num_samples:int, num_snps:int, num_populations: 
                 allele_freqs[k][j] /= (count_samples*2)
     return allele_freqs
 
+def frappeEM(I, J, K, G:np.ndarray, Q:np.ndarray, F:np.ndarray):
+    F1 = np.zeros((K,J))
+    Q1 = np.zeros((I,K))
+
+    A = np.zeros((I,J,K))
+    B = np.zeros((I,J,K))
+
+    for i in range(I):
+        for j in range(J):
+            for k in range(K):
+                a_denom = 0
+                b_denom = 0
+                for m in range(K):
+                    a_denom += Q[i][m]*F[m][j]
+                    b_denom += Q[i][m]*(1-F[m][j])
+                A[i][j][k] = Q[i][k]*F[k][j]/a_denom
+                B[i][j][k] = Q[i][k]*(1-F[k][j])/b_denom
+    
+    for k in range(K):
+        for j in range(J):
+            f_numer = 0
+            f_denom = 0
+            for i in range(I):
+                f_numer += G[i][j]*A[i][j][k]
+                f_denom += G[i][j]*A[i][j][k]+(2-G[i][j])*B[i][j][k]
+            F1[k][j] = f_numer/f_denom
+    
+    for i in range(I):
+        for k in range(K):
+            q_numer = 0
+            for j in range(J):
+                q_numer += G[i][j]*A[i][j][k]+(2-G[i][j])*B[i][j][k]
+            Q1[i][k] = q_numer/(2*J)
+
+    return Q1, F1
+
+def logLiklihood(I, J, K, G, Q, F):
+    ll = 0
+    for i in range(I):
+        for j in range(J):
+            term_1 = 0
+            term_2 = 0
+            for k in range(K):
+                term_1 += Q[i][k]*F[k][j]
+                term_2 += Q[i][k]*(1-F[k][j])
+            ll += G[i][j]*np.log(term_1) + (2-G[i][j])*np.log(term_2)
+    return ll
+
 def updateQ(I, J, K, G:np.ndarray, Q:np.ndarray, F:np.ndarray):
     new_Q = Q.copy()
 
@@ -166,13 +215,10 @@ def updateQ(I, J, K, G:np.ndarray, Q:np.ndarray, F:np.ndarray):
             for j in range(J):
                 firstDifferentialFirstTerm += G[i][j] * F[k][j]
                 firstDifferentialSecondTerm += (2-G[i][j])*(1-F[k][j])
-                
+
                 for m in range(K):
                     firstTermDenominator += Q[i][m] * F[m][j]
                     secondTermDenominator += Q[i][m]*(1-F[m][j])
-
-
-
 
 def updateF(I, J, K, G, Q, F):
     firstDifferential = 0

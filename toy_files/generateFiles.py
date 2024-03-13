@@ -1,6 +1,7 @@
 import random
 import sys
 import math
+import random
 
 """
 Usage:
@@ -11,10 +12,9 @@ def main():
     bim_file = "toy.bim"
     fam_file = "toy.fam"
 
-    samples, variants, populations = sys.argv[1:]
+    samples, variants = sys.argv[1:]
     num_samples = int(samples)
     num_variants = int(variants)
-    num_populations = int(populations)
 
     # toy.fam
     # We only need unique ids for each user, nothing else we use in v0.0
@@ -40,12 +40,15 @@ def main():
     block_size = math.ceil(num_samples/4)
     f = open(bed_file, 'wb')
     f.write(header)
+    random.seed(1)
     for i in range(num_variants):
         # Write two bits per for each sample
         buffer = ""
         for j in range(block_size*4):
             if j < num_samples:
-                buffer += '10'
+                for _ in range(2):
+                    if random.random() > 0.5: buffer += '1'
+                    else: buffer += '0'
             else: 
                 buffer += '00'
             if len(buffer) == 8:

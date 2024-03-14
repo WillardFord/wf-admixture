@@ -8,12 +8,8 @@ Similar to ADMIXTURE
 import argparse
 from . import utils as utils
 import os
-from collections import namedtuple
 import random
-
 from datetime import datetime
-
-import scipy as sp
 import numpy as np
 
 
@@ -24,23 +20,29 @@ def main():
         description=""
     )
 
-    # Inputs
-    parser.add_argument("bed",\
+    parser.add_argument("-b", "--bed",
                         help="A .bed file as described by Plink.",
-                        metavar="BED", type = str)
+                        metavar="BED", type = str, required = True)
     
-    parser.add_argument("k", help="An integer representing the number of populations "\
+    parser.add_argument("-k", "--K", help="An integer representing the number of populations "\
                         "to divide your dataset into.",
-                        metavar="K", type = int)
-    
-    # Output
+                        metavar="K", type = int, required = True)
+
     parser.add_argument("-o", "--output", help="PREFIX will send your outputs to "\
                         "PREFIX.Q and PREFIX.P." \
                         "Default: stdout", metavar="PREFIX", type = str, required=True)
+
+    parser.add_argument("-q", "--threads", help="Number of threads to use when multithreading. " \
+                        "Default: No multithreading", type = int, required=False, default = 0)
     
-    parser.add_argument("-m", "--metrics", help="Used with -o. Will generate a runtime "\
-                        "metrics file at PREFIX.metrics" \
-                        "Default: No metrics file.", action='store_true', required=False)
+    parser.add_argument("-t", "--threshold", help="Float of the desired stop threshold "\
+                        "between subsequent log liklihoods to stop frappeEM algorithm. "\
+                        "Default: 1", 
+                        type = float, required=False, default=1)
+
+    parser.add_argument("-v", "--verbose", help="Whether to print log-liklihood updates "\
+                        "each iteration.",
+                        required=False, action='store_true')
 
     # Ideas:
     #   What types of metrics should I store?
@@ -49,12 +51,20 @@ def main():
     args = parser.parse_args()
 
     # Check for valid inputs:
-    K = args.k
+    K = args.K
     bed_file = args.bed
-    metrics = args.metrics
+    threads = args.threads
+    epsilon = args.threshold
+    verbose = args.verbose
 
     if K < 1:
-        utils.ERROR("K must be greater than 0.")
+        utils.ERROR("K must be greater than 1.")
+
+    if epsilon < 0:
+        utils.ERROR("Threshold must be positive.")
+
+    if threads and threads < 1:
+        utils.ERROR("Number of threads must be greater than 1.a")
 
     if not bed_file.endswith(".bed"):
         utils.ERROR(f"{bed_file} must have '.bed' suffix.")
@@ -121,8 +131,13 @@ def main():
     J = len(snps)
     genotypes :np.ndarray= utils.readBED(bed_file, I, J)
 
+    
     print()
     print("Loaded input files")
+    print("\tbed_file:", bed_file)
+    print("\tbim_file:", bim_file)
+    print("\tfam_file:", fam_file)
+    print()
     print("\tNum Samples:", I)
     print("\tNum Variants:", J)
 
@@ -156,42 +171,38 @@ def main():
     print()
 
     # Begin Linear Optimization
-    epsilon = 1e-4 # Should probably be as low as 10e-4
-    print("Epsilon:", epsilon)
-
 
     iterations = 0
     oldll = utils.logLiklihood(I, J, K, genotypes, admixture_proportions, 
                                 allele_frequencies)
-    print("\tstarting ll:", oldll)
-    
+
+    if verbose:
+        print("starting ll:", oldll)
+
     while True:
-        admixture_proportions, allele_frequencies = utils.frappeEM(I, J, K, 
+        if threads > 0:
+            admixture_proportions, allele_frequencies = utils.frappeEMParallel(I, J, K, 
+                                genotypes, admixture_proportions, 
+                                allele_frequencies, threads)
+        else:
+            admixture_proportions, allele_frequencies = utils.frappeEM(I, J, K, 
                                 genotypes, admixture_proportions, 
                                 allele_frequencies)
-        #print("Admixture Proportions:\t", admixture_proportions)
-        #print("Allele Frequencies:\t", allele_frequencies)
         iterations += 1
-        print(f"Iteration: {iterations}")
         ll = utils.logLiklihood(I, J, K, genotypes, admixture_proportions, 
                                 allele_frequencies)
-        print("\tnew ll:", ll)
         dif =  ll - oldll
-        print("\tdif:",  dif)
+        if verbose:
+            print(f"Iteration: {iterations}")
+            print("\tnew ll:", ll)
+            print("\tdif:",  dif)
         if dif < 0:
-            utils.ERROR("Log Liklihood went down!!")
+            utils.ERROR("Log Liklihood decreased!! This should be impossible." \
+                        "\nPlease open a GitHub issue with your input data.")
         if dif < epsilon: break
         oldll = ll
 
-        """
-        if iterations % 2 == 0: admixture_proportions = utils.updateQ(I, J, K, genotypes, 
-                                                                admixture_proportions, allele_frequencies)
-        else: allele_frequencies = utils.updateF(I, J, K, genotypes, 
-                                           admixture_proportions, allele_frequencies)
-        num_iterations += 1
-        if endCondition(admixture_proportions, allele_frequencies):
-            break
-        """
+    print("Number of iterations:", iterations)
 
     # Set up output file
     prefix = args.output
@@ -207,9 +218,6 @@ def main():
 
     np.savetxt(outQ, admixture_proportions)
     np.savetxt(outF, allele_frequencies)
-
-    if metrics:
-        pass
 
     print(datetime.now())
 

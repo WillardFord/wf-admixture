@@ -7,6 +7,7 @@ from collections import namedtuple
 import numpy as np
 import math
 from multiprocessing import Pool
+import itertools
 
 # Named Tuples
 SNP = namedtuple('BIM', ['ID','chromosome','locCM', 'locBP'])
@@ -107,7 +108,7 @@ def readBED(bed_file, num_samples: int, num_variants:int) -> np.ndarray:
             if header != bed_header: 
                 ERROR("bed file missing proper header.")
             for j in range(num_variants):
-                if j % 1000 == 0 and j != 0: print("Loaded Variants:", j)
+                if j % 10000 == 0 and j != 0: print("Loaded Variants:", j)
                 snp_genotypes = ""
                 for _ in range(buffer_size): # Can we read in an entire buffer_size at once?
                     buffer = f.read(1)
@@ -153,6 +154,48 @@ def initializeAlleleFrequencies(num_samples:int, num_snps:int, num_populations: 
                 normalization_factor += admixture_proportions[i][k]
             allele_freqs[k][j] /= (2*normalization_factor)
     return allele_freqs
+
+def buildAB(params):
+        ijk_input, constants = params
+        K, Q, F = constants
+        i, j, k = ijk_input
+        a_denom = 0
+        b_denom = 0
+        for m in range(K):
+            a_denom += Q[i][m]*F[m][j]
+            b_denom += Q[i][m]*(1-F[m][j])
+        a = Q[i][k]*F[k][j]/a_denom
+        b = Q[i][k]*(1-F[k][j])/b_denom
+        return a, b
+
+def frappeEMParallel(I, J, K, G:np.ndarray, Q:np.ndarray, F:np.ndarray, threads:int):
+    F1 = np.zeros((K,J))
+    Q1 = np.zeros((I,K))
+
+
+    with Pool(threads) as pool:
+        ijk_iteration = list(itertools.product(range(I), range(J), range(K)))
+        params = [(x, (K, Q.view(), F.view())) for x in ijk_iteration]
+        abList  = pool.map(buildAB, params)
+
+    # TODO Parallelize these functions maybe
+    for k in range(K):
+        for j in range(J):
+            f_numer = 0
+            f_denom = 0
+            for i in range(I):
+                f_numer += G[i][j]*abList[i*J*K + j*K + k ][0]
+                f_denom += G[i][j]*abList[i*J*K + j*K + k ][0]+(2-G[i][j])*abList[i*J*K + j*K + k ][1]
+            F1[k][j] = f_numer/f_denom
+    
+    for i in range(I):
+        for k in range(K):
+            q_numer = 0
+            for j in range(J):
+                q_numer += G[i][j]*abList[i*J*K + j*K + k ][0]+(2-G[i][j])*abList[i*J*K + j*K + k ][1]
+            Q1[i][k] = q_numer/(2*J)
+
+    return Q1, F1
 
 def frappeEM(I, J, K, G:np.ndarray, Q:np.ndarray, F:np.ndarray):
     F1 = np.zeros((K,J))

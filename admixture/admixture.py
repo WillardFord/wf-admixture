@@ -8,12 +8,14 @@ Similar to ADMIXTURE
 import argparse
 from . import utils as utils
 import os
-import sys
-import time
 from collections import namedtuple
+import random
+
+from datetime import datetime
 
 import scipy as sp
 import numpy as np
+
 
 
 def main():
@@ -34,7 +36,7 @@ def main():
     # Output
     parser.add_argument("-o", "--output", help="PREFIX will send your outputs to "\
                         "PREFIX.Q and PREFIX.P." \
-                        "Default: stdout", metavar="PREFIX", type = str, required=False)
+                        "Default: stdout", metavar="PREFIX", type = str, required=True)
     
     parser.add_argument("-m", "--metrics", help="Used with -o. Will generate a runtime "\
                         "metrics file at PREFIX.metrics" \
@@ -71,7 +73,7 @@ def main():
     if not os.path.isfile(fam_file):
         utils.ERROR(f"{fam_file} does not exist.")
 
-    print("Congratulations! You loaded v0.0.0 of wf-admixture")
+    print("Congratulations! You loaded v0.0.1 of wf-admixture")
 
     # Read in input files
     """
@@ -109,6 +111,8 @@ def main():
         Necessary Information:
             1. Genotype information for every snp of each individual
     """
+    #datetime.time(15, 8, 24, 78915)
+    print(datetime.now())
 
     snps: list[utils.SNP] = utils.readBIM(bim_file)
     samples: list[utils.SAMPLE] = utils.readFAM(fam_file)
@@ -116,6 +120,11 @@ def main():
     I = len(samples)
     J = len(snps)
     genotypes :np.ndarray= utils.readBED(bed_file, I, J)
+
+    print()
+    print("Loaded input files")
+    print("\tNum Samples:", I)
+    print("\tNum Variants:", J)
 
     """
     Scratch Notes, please disregard. 
@@ -131,34 +140,49 @@ def main():
             2. Randomly assign value of 1 to a single population k for each individual.
             3. Randomly assign values summing to 1 to each population k for each individual.
     """
-    # Init Option 1
-    admixture_proportions :np.ndarray = np.ones((I, K)) * (1/K)
+    # Init Option 3
+    admixture_proportions :np.ndarray = np.ones((I, K)) / (10*(K-1))
+    random.seed(11)
+    for i in range(I):
+        val = int(random.random()*K)
+        admixture_proportions[i][val] = 0.9
+
     allele_frequencies :np.ndarray = utils.initializeAlleleFrequencies(I, J, K, 
                                         genotypes, admixture_proportions)
 
-    # Block Relaxation Algorithm
-    epsilon = 10e-4 # Should probably be as low as 10e-4
-    print(epsilon)
+    print()
+    print("Begin Linear Optimization")
+    print(datetime.now())
+    print()
+
+    # Begin Linear Optimization
+    epsilon = 1e-4 # Should probably be as low as 10e-4
+    print("Epsilon:", epsilon)
+
+
     iterations = 0
     oldll = utils.logLiklihood(I, J, K, genotypes, admixture_proportions, 
                                 allele_frequencies)
-    print("Admixture Proportions:\t", admixture_proportions)
-    print("Allele Frequencies:\t", allele_frequencies)
+    print("\tstarting ll:", oldll)
+    
     while True:
         admixture_proportions, allele_frequencies = utils.frappeEM(I, J, K, 
                                 genotypes, admixture_proportions, 
                                 allele_frequencies)
-        print("Admixture Proportions:\t", admixture_proportions)
-        print("Allele Frequencies:\t", allele_frequencies)
+        #print("Admixture Proportions:\t", admixture_proportions)
+        #print("Allele Frequencies:\t", allele_frequencies)
         iterations += 1
-        print(f"Iterations: {iterations}")
+        print(f"Iteration: {iterations}")
         ll = utils.logLiklihood(I, J, K, genotypes, admixture_proportions, 
                                 allele_frequencies)
-        print("ll: ", ll)
-        print("oldll: ", oldll)
-        print(ll - oldll)
-        if oldll - ll < epsilon: break
+        print("\tnew ll:", ll)
+        dif =  ll - oldll
+        print("\tdif:",  dif)
+        if dif < 0:
+            utils.ERROR("Log Liklihood went down!!")
+        if dif < epsilon: break
         oldll = ll
+
         """
         if iterations % 2 == 0: admixture_proportions = utils.updateQ(I, J, K, genotypes, 
                                                                 admixture_proportions, allele_frequencies)
@@ -169,20 +193,25 @@ def main():
             break
         """
 
-    print(ll - oldll)
-    print(oldll -ll)
-    print("Number of Iterations", iterations)
-
-
-
     # Set up output file
-    if args.output == None:
-        outf = sys.stdout
-    else: 
-        outf = open(args.output, "w")
+    prefix = args.output
+    outQ = prefix+".Q"
+    outF = prefix+".F"
+
+    print()
+    print(datetime.now())
+    print("Writing to:")
+    print("\t"+ outQ)
+    print("\t"+ outF)
+    print()
+
+    np.savetxt(outQ, admixture_proportions)
+    np.savetxt(outF, allele_frequencies)
 
     if metrics:
         pass
+
+    print(datetime.now())
 
     # Write outputs
 

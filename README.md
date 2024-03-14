@@ -39,12 +39,13 @@ wf-admixture your-favorite.bed k [-o PREFIX]
 
 To run `wf-admixture` on a small test example (using files in this repo):
 ```
-wf-admixture toy_files/toy.bed 3
+wf-admixture toy_files/toy.bed 3 -o toy_files/toy
 ```
 
-This should produce the output below:
+To see the output:
 ```
-
+cat toy_files/toy.Q
+cat toy_files/toy.F
 ```
 
 To compare to output of `ADMIXTURE`, run:
@@ -64,6 +65,61 @@ There are 2 required inputs to `wf-admixture`, a reference ___TODO
 
 TODO:
 Benchmark wf-admixture against ADMIXTURE using real data.
+
+```
+CURDIR=chr21Example
+mkdir $CURDIR
+cd $CURDIR
+
+VCF_DOWNLOAD=http://ftp.1000genomes.ebi.ac.uk/vol1/ftp/release/20130502/ALL.chr21.phase3_shapeit2_mvncall_integrated_v5b.20130502.genotypes.vcf.gz
+VCF=1000G_ALL.chr21.vcf.gz
+
+SAMPLEINFO=igsr_samples.tsv
+
+PREFIX=chr21-test
+VALID_SAMPLES=admixed_sample_ids.txt
+
+curl $VCF_DOWNLOAD -o $VCF
+
+
+echo "" > $VALID_SAMPLES
+
+cat $SAMPLEINFO | grep "1000 Genomes phase 3 release" | awk -F"\t" '($4=="CEU")' | awk '{print $1 "\t" $1}' >> $VALID_SAMPLES
+
+cat $SAMPLEINFO | grep "1000 Genomes phase 3 release" | awk -F"\t" '($4=="PEL")' | awk '{print $1 "\t" $1}' >> $VALID_SAMPLES
+
+cat $SAMPLEINFO | grep "1000 Genomes phase 3 release" | awk -F"\t" '($4=="GWD")' | awk '{print $1 "\t" $1}' >> $VALID_SAMPLES
+
+cat $SAMPLEINFO | grep "1000 Genomes phase 3 release" | awk -F"\t" '($4=="ASW")' | awk '{print $1 "\t" $1}' >> $VALID_SAMPLES
+
+cat $SAMPLEINFO | grep "1000 Genomes phase 3 release" | awk -F"\t" '($4=="PUR")' | awk '{print $1 "\t" $1}' >> $VALID_SAMPLES
+
+plink --vcf $VCF --keep $VALID_SAMPLES --double-id --maf 0.01 --out $PREFIX --make-bed
+
+plink --bed $PREFIX.bed --bim $PREFIX.bim --fam $PREFIX.fam --chr 21 --indep-pairwise 50 10 0.1
+
+plink --bed $PREFIX.bed --bim $PREFIX.bim --fam $PREFIX.fam --chr 21 --extract plink.prune.in --make-bed --out $PREFIX.pruned
+
+plink --bed $PREFIX.pruned.bed --bim $PREFIX.pruned.bim --fam $PREFIX.pruned.fam --thin-count 1000 --make-bed --out $PREFIX.pruned.thinned
+
+cd ..
+wf-admixture $CURDIR/$PREFIX.pruned.thinned.bed 3 -o $CURDIR/$PREFIX.pruned.thinned.wf-admixture
+
+---
+
+TINY_SAMPLES=admixed_sample_ids.tiny.txt
+head -n 100 $VALID_SAMPLES | tail -n 5 > $TINY_SAMPLES
+
+plink --bed $PREFIX.pruned.bed --bim $PREFIX.pruned.bim --fam $PREFIX.pruned.fam --thin-count 3 --make-bed --out $PREFIX.pruned.tiny
+
+plink --vcf $VCF --keep $TINY_SAMPLES --double-id --maf 0.01 --out $PREFIX.tiny --make-bed
+plink --bed $PREFIX.tiny.bed --bim $PREFIX.tiny.bim --fam $PREFIX.tiny.fam --chr 21 --indep-pairwise 50 10 0.1
+plink --bed $PREFIX.tiny.bed --bim $PREFIX.tiny.bim --fam $PREFIX.tiny.fam --extract plink.prune.in --thin-count 3 --make-bed --out $PREFIX.tiny.pruned.thinned
+
+cd ..
+wf-admixture $CURDIR/$PREFIX.tiny.pruned.thinned.bed 3 -o $CURDIR/$PREFIX.tiny.pruned.thinned.wf-admixture
+
+```
 
 ## File format
 

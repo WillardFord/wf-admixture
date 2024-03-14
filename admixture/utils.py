@@ -6,6 +6,7 @@ import sys
 from collections import namedtuple
 import numpy as np
 import math
+from multiprocessing import Pool
 
 # Named Tuples
 SNP = namedtuple('BIM', ['ID','chromosome','locCM', 'locBP'])
@@ -33,10 +34,10 @@ def ERROR(msg:str, E = None) -> None:
     sys.exit(1)
 
 # TODO add method description
-def readFile(filepath, delim='\t'): 
+def readFile(filepath): 
     with open(filepath, 'r') as f: 
         for line in f:
-            yield tuple(line.split(delim))
+            yield tuple(line.split())
 
 def readBIM(bim_file):
     """
@@ -106,6 +107,7 @@ def readBED(bed_file, num_samples: int, num_variants:int) -> np.ndarray:
             if header != bed_header: 
                 ERROR("bed file missing proper header.")
             for j in range(num_variants):
+                if j % 1000 == 0 and j != 0: print("Loaded Variants:", j)
                 snp_genotypes = ""
                 for _ in range(buffer_size): # Can we read in an entire buffer_size at once?
                     buffer = f.read(1)
@@ -145,12 +147,11 @@ def initializeAlleleFrequencies(num_samples:int, num_snps:int, num_populations: 
     allele_freqs = np.zeros((num_populations, num_snps))
     for k in range(num_populations):
         for j in range(num_snps):
-            count_samples = 0
+            normalization_factor = 0
             for i in range(num_samples):
-                count_samples += admixture_proportions[i][k]
                 allele_freqs[k][j] += (admixture_proportions[i][k] * genotypes[i][j])
-            if count_samples > 0:
-                allele_freqs[k][j] /= (count_samples*2)
+                normalization_factor += admixture_proportions[i][k]
+            allele_freqs[k][j] /= (2*normalization_factor)
     return allele_freqs
 
 def frappeEM(I, J, K, G:np.ndarray, Q:np.ndarray, F:np.ndarray):

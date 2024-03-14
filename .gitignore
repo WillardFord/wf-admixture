@@ -163,3 +163,4 @@ cython_debug/
 
 # Command Line Tool
 source/version.py
+chr*Example

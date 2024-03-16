@@ -96,9 +96,11 @@ Given additional time I'd also like to implement the following improvements:
 
 ## Sources
 
-Alexander et al. https://genome.cshlp.org/content/19/9/1655
-Moreno-Estrada et al. https://journals.plos.org/plosgenetics/article%3Fid=10.1371%2Fjournal.pgen.1003925
-Tang et al. https://pubmed.ncbi.nlm.nih.gov/15712363/
+[Alexander et al.](https://genome.cshlp.org/content/19/9/1655_
+
+[Moreno-Estrada et al.](https://journals.plos.org/plosgenetics/article%3Fid=10.1371%2Fjournal.pgen.1003925)
+
+[Tang et al.](https://pubmed.ncbi.nlm.nih.gov/15712363/)
 
 ## Contributors
 

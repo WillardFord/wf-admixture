@@ -96,7 +96,7 @@ Given additional time I'd also like to implement the following improvements:
 
 ## Sources
 
-[Alexander et al.](https://genome.cshlp.org/content/19/9/1655_
+[Alexander et al.](https://genome.cshlp.org/content/19/9/1655)
 
 [Moreno-Estrada et al.](https://journals.plos.org/plosgenetics/article%3Fid=10.1371%2Fjournal.pgen.1003925)
 

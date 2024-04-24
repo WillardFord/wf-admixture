@@ -24,3 +24,9 @@
 | -t | threshold value for cutoff | 
 
 
+
+
+|Model | Coeff of Determination | Olfr Gene Accuracy |
+|-------|----|---|
+|Multiple Linear | -0.053 | 0.029 |
+|PCA Reduced Linear | -0.004 | 0.042 |
